@@ -114,6 +114,27 @@ public class GraphColoringTinyCSP {
         // TODO: solve the graph coloring problem using TinyCSP and return a solution
         // Hint: you can stop the search on first solution throwing and catching an exception
         //       in the onSolution closure or you can modify the dfs search
+
+        int[] couleurs_a_utiliser = new int[instance.n];
+        Variable[] variable_couleur_pour_chaque_noeud = new Variable[instance.n];
+        TinyCSP csp = new TinyCSP();
+
+        for (int i =0; i< instance.n; i++)
+        {
+            variable_couleur_pour_chaque_noeud[i] = csp.makeVariable(instance.n);
+        }
+
+        for (int[] edge : instance.edges)
+        {
+            csp.notEqual(variable_couleur_pour_chaque_noeud[edge[0]], variable_couleur_pour_chaque_noeud[edge[1]], 0);
+        }
+
+        csp.dfs(solution ->{
+            for (int i =0; i < instance.n; i++)
+            {
+                couleurs_a_utiliser[i] = variable_couleur_pour_chaque_noeud[i].hashCode();
+            }
+        });
          throw new NotImplementedException("AllDifferentDC");
     }
 
