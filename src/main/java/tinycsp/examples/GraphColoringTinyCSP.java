@@ -115,7 +115,7 @@ public class GraphColoringTinyCSP {
         // Hint: you can stop the search on first solution throwing and catching an exception
         //       in the onSolution closure or you can modify the dfs search
 
-        int[] couleurs_a_utiliser = new int[instance.n];
+        ArrayList<int []> solutions = new ArrayList<>();;
         Variable[] variable_couleur_pour_chaque_noeud = new Variable[instance.n];
         TinyCSP csp = new TinyCSP();
 
@@ -130,11 +130,10 @@ public class GraphColoringTinyCSP {
         }
 
         csp.dfs(solution ->{
-            for (int i =0; i < instance.n; i++)
-            {
-                couleurs_a_utiliser[i] = variable_couleur_pour_chaque_noeud[i].hashCode();
-            }
+            solutions.add(solution);
         });
+
+
          throw new NotImplementedException("AllDifferentDC");
     }
 
