@@ -65,9 +65,7 @@ public class GraphColoringTinyCSP {
             FileWriter fw = new FileWriter(file+".sol");
             fw.write(nCol+" "+1+"\n");
 
-            for (int i = 0; i < sol.length; i++) {
-                fw.write(sol[i]+" ");
-            }
+            for (int j : sol) fw.write(j + " ");
 
             fw.write("\n");
             fw.close();
@@ -89,6 +87,7 @@ public class GraphColoringTinyCSP {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
+        assert scanner != null;
         int n = scanner.nextInt();
         int e = scanner.nextInt();
         int nCol = scanner.nextInt();
@@ -115,7 +114,7 @@ public class GraphColoringTinyCSP {
         // Hint: you can stop the search on first solution throwing and catching an exception
         //       in the onSolution closure or you can modify the dfs search
 
-        ArrayList<int []> solutions = new ArrayList<>();;
+        ArrayList<int []> solutions = new ArrayList<>();
         Variable[] variable_couleur_pour_chaque_noeud = new Variable[instance.n];
         TinyCSP csp = new TinyCSP();
 
@@ -129,9 +128,7 @@ public class GraphColoringTinyCSP {
             csp.notEqual(variable_couleur_pour_chaque_noeud[edge[0]], variable_couleur_pour_chaque_noeud[edge[1]], 0);
         }
 
-        csp.dfs(solution ->{
-            solutions.add(solution);
-        });
+        csp.dfs(solutions::add);
 
 
          throw new NotImplementedException("AllDifferentDC");
