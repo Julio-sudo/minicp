@@ -60,6 +60,10 @@ public class IntVarImpl implements IntVar {
         public void changeMax() {
             scheduleAll(onBound);
         }
+
+        public void IntVarImpl(Solver cp, Set<Integer> values) {
+            throw new NotImplementedException();
+        }
     };
 
     /**
