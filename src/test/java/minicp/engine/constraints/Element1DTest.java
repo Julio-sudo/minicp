@@ -15,7 +15,6 @@
 
 package minicp.engine.constraints;
 
-import com.github.guillaumederval.javagrading.GradeClass;
 import minicp.engine.SolverTest;
 import minicp.engine.core.IntVar;
 import minicp.engine.core.Solver;
@@ -24,25 +23,24 @@ import minicp.search.SearchStatistics;
 import minicp.util.exception.InconsistencyException;
 import minicp.util.exception.NotImplementedException;
 import minicp.util.NotImplementedExceptionAssume;
-import org.junit.Test;
-
-import java.util.Arrays;
-import java.util.stream.IntStream;
+import org.javagrader.Grade;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static minicp.cp.BranchingScheme.firstFail;
 import static minicp.cp.Factory.makeDfs;
 import static minicp.cp.Factory.makeIntVar;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@GradeClass(totalValue = 1, defaultCpuTimeout = 1000)
+@Grade(cpuTimeout = 1)
 public class Element1DTest extends SolverTest {
 
-    @Test
-    public void element1dTest1() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void element1dTest1(Solver cp) {
 
         try {
 
-            Solver cp = solverFactory.get();
             IntVar y = makeIntVar(cp, -3, 10);
             IntVar z = makeIntVar(cp, 2, 40);
 
@@ -77,12 +75,12 @@ public class Element1DTest extends SolverTest {
         }
     }
 
-    @Test
-    public void element1dTest2() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void element1dTest2(Solver cp) {
 
         try {
 
-            Solver cp = solverFactory.get();
             IntVar y = makeIntVar(cp, -3, 10);
             IntVar z = makeIntVar(cp, -20, 40);
 
@@ -105,12 +103,11 @@ public class Element1DTest extends SolverTest {
         }
     }
 
-
-    @Test
-    public void element1dTest3() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void element1dTest3(Solver cp) {
         try {
 
-            Solver cp = solverFactory.get();
             IntVar y = makeIntVar(cp, 0, 4);
             IntVar z = makeIntVar(cp, 5, 9);
 
@@ -133,15 +130,13 @@ public class Element1DTest extends SolverTest {
         }
     }
 
-    @Test
-    public void element1dTest4() {
-
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void element1dTest4(Solver cp) {
         try {
 
-            Solver cp = solverFactory.get();
             IntVar y = makeIntVar(cp, 0, 4);
             IntVar z = makeIntVar(cp, 5, 9);
-
 
             int[] T = new int[]{9, 8, 7, 5, 6};
 
@@ -160,11 +155,10 @@ public class Element1DTest extends SolverTest {
         }
     }
 
-    @Test
-    public void element1dTest5() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void element1dTest5(Solver cp) {
         try {
-            Solver cp = solverFactory.get();
-
             IntVar y = makeIntVar(cp, -1, 16);
             IntVar z = makeIntVar(cp, -1, 16);
             // permutation of { 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4 }
@@ -208,16 +202,16 @@ public class Element1DTest extends SolverTest {
                 --valCount[val]; // one occurrence has been removed
                 assertTrue(valCount[val] >= 0);
                 if (valCount[val] > 0 || (val > z.min() && val < z.max())) {
-                    assertTrue(String.format("z should still contain %d", val), z.contains(val));
+                    assertTrue(z.contains(val), String.format("z should still contain %d", val));
                 } else if (valCount[val] == 0) {
                     if (val == z.min()) {
                         for (int v = val; v <= valCount.length && valCount[v] == 0; v++) {
-                            assertFalse(String.format("min value update: z does not contain anymore %d", v), z.contains(v));
+                            assertFalse(z.contains(v), String.format("min value update: z does not contain anymore %d", v));
                         }
                     }
                     if (val == z.max()) {
                         for (int v = val; v >= 0 && valCount[v] == 0; v--) {
-                            assertFalse(String.format("max value update: z does not contain anymore %d", v), z.contains(v));
+                            assertFalse(z.contains(v), String.format("max value update: z does not contain anymore %d", v));
                         }
                     }
                 }

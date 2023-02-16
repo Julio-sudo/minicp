@@ -15,7 +15,6 @@
 
 package minicp.engine.constraints;
 
-import com.github.guillaumederval.javagrading.GradeClass;
 import minicp.engine.SolverTest;
 import minicp.engine.core.IntVar;
 import minicp.engine.core.Solver;
@@ -24,22 +23,25 @@ import minicp.search.SearchStatistics;
 import minicp.util.exception.InconsistencyException;
 import minicp.util.exception.NotImplementedException;
 import minicp.util.NotImplementedExceptionAssume;
-import org.junit.Test;
+import org.javagrader.Grade;
+import org.javagrader.GradeFeedback;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
 import static minicp.cp.BranchingScheme.*;
 import static minicp.cp.Factory.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@GradeClass(totalValue = 1, defaultCpuTimeout = 1000)
+@Grade(cpuTimeout = 1)
 public class AllDifferentDCTest extends SolverTest {
 
-    @Test
-    public void allDifferentTest1() {
-
-        Solver cp = solverFactory.get();
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testOneFixedVariable(Solver cp) {
 
         IntVar[] x = makeIntVarArray(cp, 5, 5);
 
@@ -50,19 +52,16 @@ public class AllDifferentDCTest extends SolverTest {
                 assertEquals(4, x[i].size());
                 assertEquals(1, x[i].min());
             }
-
         } catch (InconsistencyException e) {
-            assert (false);
+            fail("should not fail");
         } catch (NotImplementedException e) {
             NotImplementedExceptionAssume.fail(e);
         }
     }
 
-
-    @Test
-    public void allDifferentTest2() {
-
-        Solver cp = solverFactory.get();
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testNoSolutionRemoved(Solver cp) {
 
         IntVar[] x = makeIntVarArray(cp, 5, 5);
 
@@ -73,7 +72,7 @@ public class AllDifferentDCTest extends SolverTest {
             assertEquals(120, stats.numberOfSolutions());
 
         } catch (InconsistencyException e) {
-            assert (false);
+            fail("should not fail");
         } catch (NotImplementedException e) {
             NotImplementedExceptionAssume.fail(e);
         }
@@ -84,16 +83,194 @@ public class AllDifferentDCTest extends SolverTest {
         return makeIntVar(cp, new HashSet<>(Arrays.asList(values)));
     }
 
-
-    @Test
-    public void allDifferentTest3() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testUpdateGraph1(Solver cp) {
         try {
-            Solver cp = solverFactory.get();
+            Set<Integer>[] domainsBefore = new Set[] {
+                    new HashSet(Arrays.asList(3, 4)),
+                    new HashSet(Arrays.asList(1)),
+                    new HashSet(Arrays.asList(3, 4)),
+                    new HashSet(Arrays.asList(0)),
+                    new HashSet(Arrays.asList(3, 4, 5)),
+                    new HashSet(Arrays.asList(5, 6, 7)),
+                    new HashSet(Arrays.asList(2, 9, 10)),
+                    new HashSet(Arrays.asList(5, 6, 7, 8)),
+                    new HashSet(Arrays.asList(5, 6, 7)),
+            };
+            IntVar[] x = new IntVar[domainsBefore.length];
+            for (int i = 0 ; i < x.length ; ++i) {
+                x[i] = makeIntVar(cp, domainsBefore[i]);
+            }
+            AllDifferentDC allDiff = new AllDifferentDC(x);
+            cp.post(allDiff, false); // no fixpoint to be sure that the propagation is done only once
+            int n = allDiff.g.n();
+            Set<Integer> [] in = new Set[n];
+            Set<Integer> [] out = new Set[n];
+            for (int i = 0 ; i < n ; ++i) {
+                in[i] = new HashSet<>();
+                for (int j: allDiff.g.in(i))
+                    in[i].add(j);
+                out[i] = new HashSet<>();
+                for (int j: allDiff.g.out(i))
+                    out[i].add(j);
+            }
+            int sink = -1;
+            for (int i = 0 ; i < n ; ++i) {
+                for (int ingoing: in[i]) {
+                    assertTrue(out[ingoing].contains(i),
+                            String.format("%d belongs to in[%d] <=> %d belongs to out[%d]", ingoing, i, i, ingoing));
+                }
+                for (int outgoing: out[i]) {
+                    assertTrue(in[outgoing].contains(i),
+                            String.format("%d belongs to out[%d] <=> %d belongs to in[%d]", outgoing, i, i, outgoing));
+                }
+                if (out[i].size() == x.length) {
+                    assertNotEquals(sink, x.length, "There is only one sink");
+                    sink = i;
+                }
+            }
+            // test the sink
+            assertNotEquals(-1, sink, "You should have a sink with " + x.length + " outgoing links in your graph");
+            // from the sink, retrieve the values
+            for (int value: out[sink]) {
+                assertEquals(1, out[value].size(), "Values to which the sink points towards have only one outgoing link");
+                for (int var: out[value]) {
+                    assertEquals(1, in[var].size(), "Variables have only one ingoing link");
+                }
+            }
+        } catch (InconsistencyException e) {
+            fail("should not fail");
+        } catch (NotImplementedException e) {
+            NotImplementedExceptionAssume.fail(e);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testUpdateGraph2(Solver cp) {
+        try {
+            IntVar[] x = new IntVar[]{
+                    makeIVar(cp, 0, 3, 4, 7),
+                    makeIVar(cp, 1, 10),
+                    makeIVar(cp, 3, 4),
+                    makeIVar(cp, 0, 6),
+                    makeIVar(cp, 3, 4, 5, 2),
+                    makeIVar(cp, 5, 6, 7),
+                    makeIVar(cp, 2, 9, 10),
+                    makeIVar(cp, 4, 5, 6, 7, 8),
+                    makeIVar(cp, 5, 7)};
+            AllDifferentDC allDiff = new AllDifferentDC(x);
+            cp.post(allDiff);
+            int n = allDiff.g.n();
+            Set<Integer> [] in = new Set[n];
+            Set<Integer> [] out = new Set[n];
+            for (int i = 0 ; i < n ; ++i) {
+                in[i] = new HashSet<>();
+                for (int j: allDiff.g.in(i))
+                    in[i].add(j);
+                out[i] = new HashSet<>();
+                for (int j: allDiff.g.out(i))
+                    out[i].add(j);
+            }
+            int sink = -1;
+            for (int i = 0 ; i < n ; ++i) {
+                for (int ingoing: in[i]) {
+                    assertTrue(out[ingoing].contains(i),
+                            String.format("%d belongs to in[%d] <=> %d belongs to out[%d]", ingoing, i, i, ingoing));
+                }
+                for (int outgoing: out[i]) {
+                    assertTrue(in[outgoing].contains(i),
+                            String.format("%d belongs to out[%d] <=> %d belongs to in[%d]", outgoing, i, i, outgoing));
+                }
+                if (out[i].size() == x.length) {
+                    assertNotEquals(sink, x.length, "There is only one sink");
+                    sink = i;
+                }
+            }
+            // test the sink
+            assertNotEquals(-1, sink, "You should have a sink with " + x.length + " outgoing links in your graph");
+            // from the sink, retrieve the values
+            for (int value: out[sink]) {
+                assertEquals(1, out[value].size(), "Values to which the sink points towards have only one outgoing link");
+                for (int var: out[value]) {
+                    assertEquals(1, in[var].size(), "Variables have only one ingoing link");
+                }
+            }
+        } catch (InconsistencyException e) {
+            fail("should not fail");
+        } catch (NotImplementedException e) {
+            NotImplementedExceptionAssume.fail(e);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    @GradeFeedback(message = "How are you handling the case when the values do not start from 0?")
+    public void testUpdateGraph3(Solver cp) {
+        try {
+            IntVar[] x = new IntVar[]{
+                    makeIVar(cp, 2, 3, 4, 5, 6, 7, 8, 9),
+                    makeIVar(cp, 2, 4, 7),
+                    makeIVar(cp, 2, 3, 7),
+                    makeIVar(cp, 1, 10),
+            };
+            AllDifferentDC allDiff = new AllDifferentDC(x);
+            cp.post(allDiff);
+            assertEquals(8, x[0].size());
+            assertEquals(3, x[1].size());
+            assertEquals(3, x[2].size());
+            assertEquals(2, x[3].size());
+            int n = allDiff.g.n();
+            Set<Integer> [] in = new Set[n];
+            Set<Integer> [] out = new Set[n];
+            for (int i = 0 ; i < n ; ++i) {
+                in[i] = new HashSet<>();
+                for (int j: allDiff.g.in(i))
+                    in[i].add(j);
+                out[i] = new HashSet<>();
+                for (int j: allDiff.g.out(i))
+                    out[i].add(j);
+            }
+            int sink = -1;
+            for (int i = 0 ; i < n ; ++i) {
+                for (int ingoing: in[i]) {
+                    assertTrue(out[ingoing].contains(i),
+                            String.format("%d belongs to in[%d] <=> %d belongs to out[%d]", ingoing, i, i, ingoing));
+                }
+                for (int outgoing: out[i]) {
+                    assertTrue(in[outgoing].contains(i),
+                            String.format("%d belongs to out[%d] <=> %d belongs to in[%d]", outgoing, i, i, outgoing));
+                }
+                if (out[i].size() == x.length) {
+                    assertNotEquals(sink, x.length, "There is only one sink");
+                    sink = i;
+                }
+            }
+            // test the sink
+            assertNotEquals(-1, sink, "You should have a sink with " + x.length + " outgoing links in your graph");
+            // from the sink, retrieve the values
+            for (int value: out[sink]) {
+                assertEquals(1, out[value].size(), "Values to which the sink points towards have only one outgoing link");
+                for (int var: out[value]) {
+                    assertEquals(1, in[var].size(), "Variables have only one ingoing link");
+                }
+            }
+        } catch (InconsistencyException e) {
+            fail("should not fail");
+        } catch (NotImplementedException e) {
+            NotImplementedExceptionAssume.fail(e);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testRemoveStronglyConnected(Solver cp) {
+        try {
             IntVar[] x = new IntVar[]{
                     makeIVar(cp, 1, 2),
                     makeIVar(cp, 1, 2),
                     makeIVar(cp, 1, 2, 3, 4)};
-            int[] matching = new int[x.length];
 
             cp.post(new AllDifferentDC(x));
 
@@ -108,10 +285,10 @@ public class AllDifferentDCTest extends SolverTest {
 
     }
 
-    @Test
-    public void allDifferentTest5() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void allDifferentTest1(Solver cp) {
         try {
-            Solver cp = solverFactory.get();
             IntVar[] x = new IntVar[]{
                     makeIVar(cp, 1, 2, 3, 4, 5),
                     makeIVar(cp, 2),
@@ -122,7 +299,6 @@ public class AllDifferentDCTest extends SolverTest {
                     makeIVar(cp, 3),
                     makeIVar(cp, 6, 7, 8, 9),
                     makeIVar(cp, 6, 7, 8)};
-            int[] matching = new int[x.length];
 
             cp.post(new AllDifferentDC(x));
 
@@ -140,10 +316,10 @@ public class AllDifferentDCTest extends SolverTest {
         }
     }
 
-    @Test
-    public void allDifferentTest6() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testNoFailuresWithDFS(Solver cp) {
         try {
-            Solver cp = solverFactory.get();
             IntVar[] x = new IntVar[]{
                     makeIVar(cp, 1, 2, 3, 4, 5),
                     makeIVar(cp, 2, 7),
@@ -154,7 +330,6 @@ public class AllDifferentDCTest extends SolverTest {
                     makeIVar(cp, 3, 4, 5),
                     makeIVar(cp, 6, 7, 8, 9),
                     makeIVar(cp, 6, 7, 8)};
-            int[] matching = new int[x.length];
 
             cp.post(new AllDifferentDC(x));
 
@@ -189,11 +364,10 @@ public class AllDifferentDCTest extends SolverTest {
         }
     }
 
-
-    @Test
-    public void allDifferentTest7() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testExample(Solver cp) {
         try {
-            Solver cp = solverFactory.get();
             IntVar[] x = new IntVar[]{
                     makeIVar(cp, 3, 4),
                     makeIVar(cp, 1),
@@ -204,16 +378,15 @@ public class AllDifferentDCTest extends SolverTest {
                     makeIVar(cp, 2, 9, 10),
                     makeIVar(cp, 5, 6, 7, 8),
                     makeIVar(cp, 5, 6, 7)};
-            int[] matching = new int[x.length];
 
             cp.post(new AllDifferentDC(x));
 
-            assertTrue(!x[4].contains(3));
-            assertTrue(!x[4].contains(4));
-            assertTrue(!x[5].contains(5));
-            assertTrue(!x[7].contains(5));
-            assertTrue(!x[7].contains(6));
-            assertTrue(!x[8].contains(5));
+            assertFalse(x[4].contains(3));
+            assertFalse(x[4].contains(4));
+            assertFalse(x[5].contains(5));
+            assertFalse(x[7].contains(5));
+            assertFalse(x[7].contains(6));
+            assertFalse(x[8].contains(5));
         } catch (InconsistencyException e) {
             fail("should not fail");
         } catch (NotImplementedException e) {
@@ -221,22 +394,20 @@ public class AllDifferentDCTest extends SolverTest {
         }
     }
 
-
-    @Test
-    public void allDifferentTest8() {
+    @ParameterizedTest
+    @MethodSource("getSolver")
+    public void testHandleNegativeValues(Solver cp) {
         try {
-            Solver cp = solverFactory.get();
             IntVar[] x = new IntVar[]{
                     makeIVar(cp, 0,2,3,5),
                     makeIVar(cp, 4),
                     makeIVar(cp, -1,1),
                     makeIVar(cp, -4,-2,0,2,3),
                     makeIVar(cp, -1)};
-            int[] matching = new int[x.length];
 
             cp.post(new AllDifferentDC(x));
 
-            assertTrue(!x[2].contains(-1));
+            assertFalse(x[2].contains(-1));
 
         } catch (InconsistencyException e) {
             fail("should not fail");
@@ -244,8 +415,6 @@ public class AllDifferentDCTest extends SolverTest {
             NotImplementedExceptionAssume.fail(e);
         }
     }
-
-
 
 
 }
